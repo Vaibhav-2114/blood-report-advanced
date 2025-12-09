@@ -85,6 +85,45 @@ if uploaded:
                             overall_risk = prediction.get("overall_risk", "Unknown")
                             risk_color = "🟢" if overall_risk == "Low" else "🟡" if overall_risk == "Medium" else "🔴"
                             st.metric("Overall Risk Level", f"{risk_color} {overall_risk}")
+                        
+                        # Display Disease Predictions
+                        st.subheader("🏥 Possible Diseases")
+                        diseases_result = res.get("diseases", {})
+                        summary = diseases_result.get("summary", "")
+                        
+                        if summary:
+                            st.info(summary)
+                        
+                        possible_diseases = diseases_result.get("possible_diseases", {})
+                        
+                        if possible_diseases:
+                            for disease_name, disease_data in possible_diseases.items():
+                                with st.expander(f"{disease_name} - {disease_data.get('risk_level', 'Unknown')} ({disease_data.get('confidence', 0)}% confidence)"):
+                                    col1, col2 = st.columns([1, 1])
+                                    
+                                    with col1:
+                                        st.write(f"**Description:** {disease_data.get('description', 'N/A')}")
+                                        st.write(f"**Recommendation:** {disease_data.get('recommendation', 'N/A')}")
+                                    
+                                    with col2:
+                                        confidence = disease_data.get('confidence', 0)
+                                        st.progress(int(confidence) / 100)
+                                        st.metric("Confidence", f"{confidence}%")
+                                    
+                                    st.write("**Matched Indicators:**")
+                                    indicators = disease_data.get('matched_indicators', [])
+                                    if indicators:
+                                        for ind in indicators:
+                                            st.write(f"• {ind['parameter']}: {ind['value']} (threshold: {ind['condition']})")
+                                    else:
+                                        st.write("No specific indicators matched")
+                                    
+                                    st.write("**Associated Symptoms:**")
+                                    symptoms = disease_data.get('symptoms', [])
+                                    if symptoms:
+                                        st.write(", ".join(symptoms))
+                        else:
+                            st.success("✅ No significant diseases detected. Regular monitoring recommended.")
                 else:
                     st.error("Backend error: "+str(r.status_code))
             except Exception as e:

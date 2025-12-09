@@ -1,6 +1,8 @@
 import joblib
 from pathlib import Path
 import json
+from .disease_service import predict_diseases
+
 MODEL_PATH = Path(__file__).parent / "predict_model.pkl"
 RANGES_PATH = Path(__file__).parent.parent / "utils" / "normal_ranges.json"
 

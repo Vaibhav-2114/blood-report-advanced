@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from .services import ocr_service, extract_service, ml_service
+from .services.disease_service import predict_diseases
 import uvicorn
 import logging
 
@@ -42,8 +43,13 @@ async def analyze(values: dict):
         logger.info(f"Analyzing {len(values)} values")
         comparison = ml_service.compare_with_ranges(values)
         prediction = ml_service.predict_risk(values)
+        diseases = predict_diseases(values)
         logger.info(f"Analysis complete: {prediction}")
-        return JSONResponse({"comparison": comparison, "prediction": prediction})
+        return JSONResponse({
+            "comparison": comparison, 
+            "prediction": prediction,
+            "diseases": diseases
+        })
     except Exception as e:
         logger.error(f"Error in analyze: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
