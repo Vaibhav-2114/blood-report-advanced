@@ -1,0 +1,25 @@
+{
+  "builds": [
+    {
+      "src": "backend/api/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "runtime": "python3.11"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/api/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "backend/api/main.py"
+    }
+  ],
+  "env": {
+    "PYTHONUNBUFFERED": "1"
+  }
+}
