@@ -1,0 +1,39 @@
+{
+  "hemoglobin": [
+    "hemoglobin",
+    "hb",
+    "hgb"
+  ],
+  "wbc": [
+    "wbc",
+    "white blood cell",
+    "white blood cells",
+    "total leucocyte",
+    "wbc count"
+  ],
+  "platelets": [
+    "platelet",
+    "platelets",
+    "plt"
+  ],
+  "creatinine": [
+    "creatinine",
+    "creatinine (mg/dl)",
+    "creat"
+  ],
+  "sgpt": [
+    "sgpt",
+    "alt",
+    "alanine transaminase"
+  ],
+  "sgot": [
+    "sgot",
+    "ast",
+    "aspartate transaminase"
+  ],
+  "bilirubin": [
+    "bilirubin",
+    "total bilirubin",
+    "t bilirubin"
+  ]
+}

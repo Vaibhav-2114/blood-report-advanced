@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pillow
+pytesseract
+python-multipart
+joblib
+scikit-learn
+pandas
+requests
+pdf2image
+PyPDF2

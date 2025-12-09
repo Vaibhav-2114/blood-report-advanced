@@ -1,0 +1,55 @@
+{
+  "Hemoglobin": {
+    "male": [
+      13.0,
+      17.0
+    ],
+    "female": [
+      12.0,
+      16.0
+    ],
+    "unit": "g/dL"
+  },
+  "WBC": {
+    "any": [
+      4000,
+      11000
+    ],
+    "unit": "cells/mcL"
+  },
+  "Platelets": {
+    "any": [
+      150000,
+      450000
+    ],
+    "unit": "cells/mcL"
+  },
+  "Creatinine": {
+    "any": [
+      0.6,
+      1.3
+    ],
+    "unit": "mg/dL"
+  },
+  "SGPT": {
+    "any": [
+      7,
+      56
+    ],
+    "unit": "U/L"
+  },
+  "SGOT": {
+    "any": [
+      10,
+      40
+    ],
+    "unit": "U/L"
+  },
+  "Bilirubin": {
+    "any": [
+      0.1,
+      1.2
+    ],
+    "unit": "mg/dL"
+  }
+}

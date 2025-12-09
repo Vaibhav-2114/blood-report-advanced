@@ -1,0 +1,7 @@
+Hemoglobin: 9.8 g/dL
+WBC Count: 7800
+Platelets: 220000
+Creatinine: 1.5
+SGPT: 65
+SGOT: 58
+Bilirubin: 1.1
