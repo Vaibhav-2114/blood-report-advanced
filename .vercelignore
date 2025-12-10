@@ -1,0 +1,4 @@
+﻿# Exclude model artifacts and backups from Vercel
+tmp_model_backup/
+*.pkl
+backend/api/services/predict_model.pkl
