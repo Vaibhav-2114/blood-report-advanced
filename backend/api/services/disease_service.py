@@ -1,179 +1,146 @@
-import json
-from pathlib import Path
+"""Transparent rule-score indicators for educational demonstrations.
 
-HERE = Path(__file__).parent.parent
+These heuristics are not clinically validated and must not be used to diagnose
+or rule out a medical condition.
+"""
 
-# Disease diagnosis rules based on blood parameters
 DISEASE_RULES = {
-    "Anemia": {
-        "description": "Low red blood cell count or hemoglobin levels",
+    "Anemia indicator": {
+        "description": "A low hemoglobin value can be associated with anemia.",
         "indicators": [
             {"param": "Hemoglobin", "operator": "<", "value": 11, "weight": 0.9},
             {"param": "WBC", "operator": "<", "value": 4000, "weight": 0.3},
         ],
-        "symptoms": ["Fatigue", "Shortness of breath", "Weakness", "Pale skin"]
+        "symptoms": ["Fatigue", "Shortness of breath", "Weakness", "Pale skin"],
     },
-    "Kidney Disease": {
-        "description": "Impaired kidney function",
+    "Kidney-function indicator": {
+        "description": "A raised creatinine value can be associated with altered kidney function.",
         "indicators": [
             {"param": "Creatinine", "operator": ">", "value": 1.3, "weight": 0.85},
             {"param": "Bilirubin", "operator": ">", "value": 1.5, "weight": 0.2},
         ],
-        "symptoms": ["Fatigue", "Swelling in legs", "Difficulty urinating", "Blood in urine"]
+        "symptoms": ["Fatigue", "Swelling in legs", "Difficulty urinating", "Blood in urine"],
     },
-    "Liver Disease": {
-        "description": "Impaired liver function",
+    "Liver-function indicator": {
+        "description": "Raised liver enzymes or bilirubin may need clinical review.",
         "indicators": [
             {"param": "SGPT", "operator": ">", "value": 56, "weight": 0.8},
             {"param": "SGOT", "operator": ">", "value": 40, "weight": 0.8},
             {"param": "Bilirubin", "operator": ">", "value": 1.2, "weight": 0.7},
         ],
-        "symptoms": ["Jaundice", "Fatigue", "Abdominal pain", "Dark urine"]
+        "symptoms": ["Jaundice", "Fatigue", "Abdominal pain", "Dark urine"],
     },
-    "Infection/Leukemia": {
-        "description": "Bacterial or viral infection, possible blood disorder",
+    "Blood-count indicator": {
+        "description": "An abnormal white-cell count or low platelet count needs interpretation in context.",
         "indicators": [
             {"param": "WBC", "operator": ">", "value": 11000, "weight": 0.75},
             {"param": "Platelets", "operator": "<", "value": 150000, "weight": 0.6},
         ],
-        "symptoms": ["Fever", "Chills", "Easy bruising", "Frequent infections"]
+        "symptoms": ["Fever", "Chills", "Easy bruising", "Frequent infections"],
     },
-    "Hemolytic Anemia": {
-        "description": "Destruction of red blood cells",
+    "Red-cell breakdown indicator": {
+        "description": "The combination of selected blood-test changes can require further evaluation.",
         "indicators": [
             {"param": "Hemoglobin", "operator": "<", "value": 10, "weight": 0.85},
             {"param": "Bilirubin", "operator": ">", "value": 2.0, "weight": 0.8},
             {"param": "WBC", "operator": ">", "value": 8000, "weight": 0.4},
         ],
-        "symptoms": ["Dark urine", "Yellowing of skin", "Shortness of breath", "Headache"]
+        "symptoms": ["Dark urine", "Yellowing of skin", "Shortness of breath", "Headache"],
     },
-    "Thrombocytopenia": {
-        "description": "Low platelet count",
+    "Low-platelet indicator": {
+        "description": "A low platelet count can have many causes and needs clinical interpretation.",
         "indicators": [
             {"param": "Platelets", "operator": "<", "value": 150000, "weight": 0.95},
             {"param": "Hemoglobin", "operator": "<", "value": 12, "weight": 0.3},
         ],
-        "symptoms": ["Easy bruising", "Petechiae (small red spots)", "Bleeding gums", "Nosebleeds"]
+        "symptoms": ["Easy bruising", "Small red skin spots", "Bleeding gums", "Nosebleeds"],
     },
-    "Polycythemia": {
-        "description": "High red blood cell count",
+    "High-hemoglobin indicator": {
+        "description": "A high hemoglobin value can have several causes and needs clinical interpretation.",
         "indicators": [
             {"param": "Hemoglobin", "operator": ">", "value": 18, "weight": 0.85},
             {"param": "WBC", "operator": ">", "value": 9000, "weight": 0.4},
         ],
-        "symptoms": ["Headache", "Dizziness", "Shortness of breath", "Itching"]
-    }
+        "symptoms": ["Headache", "Dizziness", "Shortness of breath", "Itching"],
+    },
 }
 
 
 def predict_diseases(values: dict):
-    """
-    Predict possible diseases based on blood report parameters.
-    
-    Args:
-        values: Dictionary of blood test parameters and their values
-    
-    Returns:
-        Dictionary with disease predictions and their confidence scores
-    """
-    disease_predictions = {}
-    
-    for disease_name, disease_info in DISEASE_RULES.items():
-        confidence_score = 0.0
-        matched_indicators = []
-        
-        for indicator in disease_info["indicators"]:
-            param = indicator["param"]
-            operator = indicator["operator"]
-            threshold = indicator["value"]
-            weight = indicator["weight"]
-            
-            if param not in values:
+    """Return heuristic matches; the score is not a probability."""
+    predictions = {}
+
+    for name, info in DISEASE_RULES.items():
+        matched = []
+        matched_weight = 0.0
+        total_weight = sum(item["weight"] for item in info["indicators"])
+
+        for indicator in info["indicators"]:
+            parameter = indicator["param"]
+            if parameter not in values:
                 continue
-            
-            param_value = values[param]
-            is_match = False
-            
-            if operator == "<" and param_value < threshold:
-                is_match = True
-            elif operator == ">" and param_value > threshold:
-                is_match = True
-            
+
+            value = values[parameter]
+            threshold = indicator["value"]
+            operator = indicator["operator"]
+            is_match = value < threshold if operator == "<" else value > threshold
             if is_match:
-                confidence_score += weight
-                matched_indicators.append({
-                    "parameter": param,
-                    "value": param_value,
+                matched_weight += indicator["weight"]
+                matched.append({
+                    "parameter": parameter,
+                    "value": value,
                     "threshold": threshold,
-                    "condition": f"{param} {operator} {threshold}"
+                    "condition": f"{parameter} {operator} {threshold}",
                 })
-        
-        # Normalize confidence score (max possible depends on number of indicators)
-        max_weight = sum([ind["weight"] for ind in disease_info["indicators"]])
-        if max_weight > 0:
-            confidence_percentage = min((confidence_score / max_weight) * 100, 100)
-        else:
-            confidence_percentage = 0
-        
-        # Only include diseases with at least 30% confidence
-        if confidence_percentage >= 30:
-            disease_predictions[disease_name] = {
-                "confidence": round(confidence_percentage, 1),
-                "risk_level": get_risk_level(confidence_percentage),
-                "description": disease_info["description"],
-                "matched_indicators": matched_indicators,
-                "symptoms": disease_info["symptoms"],
-                "recommendation": get_recommendation(confidence_percentage)
+
+        score = round((matched_weight / total_weight) * 100, 1) if total_weight else 0
+        if matched and score >= 30:
+            predictions[name] = {
+                "confidence": score,
+                "risk_level": get_risk_level(score),
+                "description": info["description"],
+                "matched_indicators": matched,
+                "symptoms": info["symptoms"],
+                "recommendation": get_recommendation(score),
             }
-    
-    # Sort by confidence score
-    sorted_diseases = dict(sorted(
-        disease_predictions.items(),
-        key=lambda x: x[1]["confidence"],
-        reverse=True
-    ))
-    
+
+    sorted_predictions = dict(
+        sorted(predictions.items(), key=lambda item: item[1]["confidence"], reverse=True)
+    )
     return {
-        "possible_diseases": sorted_diseases,
-        "summary": generate_summary(sorted_diseases)
+        "possible_diseases": sorted_predictions,
+        "summary": generate_summary(sorted_predictions),
+        "disclaimer": (
+            "Rule scores are educational heuristics, not medical probabilities or diagnoses. "
+            "No result from this tool can rule out a condition."
+        ),
     }
 
 
-def get_risk_level(confidence: float) -> str:
-    """Determine risk level based on confidence score."""
-    if confidence >= 80:
-        return "High Risk"
-    elif confidence >= 60:
-        return "Moderate Risk"
-    elif confidence >= 40:
-        return "Medium Risk"
-    else:
-        return "Low Risk"
+def get_risk_level(score: float) -> str:
+    if score >= 80:
+        return "High rule score"
+    if score >= 60:
+        return "Moderate rule score"
+    if score >= 40:
+        return "Medium rule score"
+    return "Low rule score"
 
 
-def get_recommendation(confidence: float) -> str:
-    """Get medical recommendation based on confidence score."""
-    if confidence >= 80:
-        return "⚠️ Immediate medical consultation strongly recommended"
-    elif confidence >= 60:
-        return "⚠️ Medical consultation recommended within a few days"
-    elif confidence >= 40:
-        return "ℹ️ Consider consulting a healthcare professional"
-    else:
-        return "ℹ️ Monitor and consult doctor if symptoms appear"
+def get_recommendation(score: float) -> str:
+    if score >= 80:
+        return "Discuss these results promptly with a qualified healthcare professional."
+    if score >= 60:
+        return "Arrange a review with a qualified healthcare professional."
+    return "Review the original report with a qualified healthcare professional if concerned."
 
 
-def generate_summary(diseases: dict) -> str:
-    """Generate a summary of predicted diseases."""
-    if not diseases:
-        return "No significant diseases detected based on blood parameters. Regular monitoring recommended."
-    
-    top_disease = list(diseases.keys())[0]
-    top_confidence = diseases[top_disease]["confidence"]
-    
-    if top_confidence >= 80:
-        return f"⚠️ High risk of {top_disease} detected ({top_confidence}% confidence). Immediate medical attention needed."
-    elif top_confidence >= 60:
-        return f"⚠️ Possible {top_disease} indicated ({top_confidence}% confidence). Medical consultation advised."
-    else:
-        return f"ℹ️ {top_disease} is a possible condition ({top_confidence}% confidence). Further testing may be needed."
+def generate_summary(predictions: dict) -> str:
+    if not predictions:
+        return "No configured rules were triggered. This does not rule out a medical condition."
+
+    top_name, top = next(iter(predictions.items()))
+    return (
+        f"The strongest configured rule match is {top_name} "
+        f"(rule score: {top['confidence']}%). This is not a diagnosis."
+    )
