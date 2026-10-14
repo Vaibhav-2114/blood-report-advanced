@@ -1,3 +1,4 @@
+# Shared local development dependencies. Keep aligned with backend/requirements.txt.
 fastapi
 uvicorn[standard]
 pillow
@@ -9,3 +10,4 @@ pandas
 requests
 pdf2image
 PyPDF2
+streamlit

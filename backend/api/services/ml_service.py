@@ -1,77 +1,100 @@
-import joblib
-from pathlib import Path
 import json
-from .disease_service import predict_diseases
+from pathlib import Path
 
-MODEL_PATH = Path(__file__).parent / "predict_model.pkl"
+import joblib
+
+MODEL_PATH = Path(__file__).with_name("predict_model.pkl")
 RANGES_PATH = Path(__file__).parent.parent / "utils" / "normal_ranges.json"
+FEATURES = ["Hemoglobin", "WBC", "Platelets", "Creatinine", "SGPT", "SGOT", "Bilirubin"]
+
 
 def load_model():
-    if MODEL_PATH.exists():
-        try:
-            return joblib.load(MODEL_PATH)
-        except Exception:
-            return None
-    return None
+    """Load the optional local demo model; use rules if it is absent or invalid."""
+    if not MODEL_PATH.is_file():
+        return None
+    try:
+        return joblib.load(MODEL_PATH)
+    except Exception:
+        return None
+
 
 def compare_with_ranges(values: dict):
-    with open(RANGES_PATH) as f:
-        ranges = json.load(f)
+    with RANGES_PATH.open(encoding="utf-8") as file:
+        ranges = json.load(file)
+
     result = {}
-    for k,v in values.items():
-        if k not in ranges:
-            result[k] = {"value": v, "status": "Unknown"}
+    for key, value in values.items():
+        reference = ranges.get(key)
+        if not reference:
+            result[key] = {"value": value, "status": "Unknown"}
             continue
-        r = ranges[k].get("any", ranges[k].get("male"))
-        low, high = r[0], r[1]
-        status = "Normal"
-        if v < low: 
-            status = "Low"
-        elif v > high: 
-            status = "High"
-        result[k] = {
-            "value": v, 
-            "status": status, 
-            "normal_range": r, 
-            "unit": ranges[k].get("unit","")
+
+        limits = reference.get("any")
+        if limits is None:
+            # Hemoglobin ranges differ by sex. Do not silently select one range.
+            result[key] = {
+                "value": value,
+                "status": "Context needed",
+                "normal_range": {
+                    group: reference[group]
+                    for group in ("male", "female")
+                    if group in reference
+                },
+                "unit": reference.get("unit", ""),
+            }
+            continue
+
+        low, high = limits
+        status = "Low" if value < low else "High" if value > high else "Normal"
+        result[key] = {
+            "value": value,
+            "status": status,
+            "normal_range": limits,
+            "unit": reference.get("unit", ""),
         }
     return result
 
+
 def predict_risk(values: dict):
+    """Return a demo label, not a medical prediction."""
     model = load_model()
-    features = ["Hemoglobin","WBC","Platelets","Creatinine","SGPT","SGOT","Bilirubin"]
-    X = [values.get(f, None) for f in features]
-    if model is None or any(x is None for x in X):
+    features = [values.get(name) for name in FEATURES]
+    if model is None or any(value is None for value in features):
         return rule_based(values)
+
     try:
-        pred = model.predict([X])[0]
-        prob = None
-        if hasattr(model, "predict_proba"):
-            prob = max(model.predict_proba([X])[0])
-        # Return risks as list of strings and overall risk as string
-        risks = [str(pred)] if pred else []
-        overall_risk = "High" if prob and prob > 0.7 else "Medium" if prob else "Medium"
-        return {"risks": risks, "overall_risk": overall_risk}
+        label = str(model.predict([features])[0])
+        probabilities = model.predict_proba([features])[0] if hasattr(model, "predict_proba") else None
+        model_confidence = float(max(probabilities)) if probabilities is not None else None
+
+        # Confidence is confidence in a synthetic demo label, not severity or clinical risk.
+        is_normal = label.strip().lower() in {"normal", "healthy", "none"}
+        return {
+            "risks": [] if is_normal else [label],
+            "overall_risk": "Low" if is_normal else "Review",
+            "model_confidence": model_confidence,
+            "disclaimer": "Experimental output from synthetic training data; not clinically validated.",
+        }
     except Exception:
         return rule_based(values)
 
+
 def rule_based(values: dict):
-    risks=[]
-    overall="Low"
-    hb = values.get("Hemoglobin")
-    creat = values.get("Creatinine")
-    sgpt = values.get("SGPT")
-    sgot = values.get("SGOT")
-    if hb is not None and hb < 11:
+    risks = []
+    if values.get("Hemoglobin") is not None and values["Hemoglobin"] < 11:
         risks.append("Anemia_Risk")
-    if creat is not None and creat > 1.3:
+    if values.get("Creatinine") is not None and values["Creatinine"] > 1.3:
         risks.append("Kidney_Risk")
-    if (sgpt is not None and sgpt>56) or (sgot is not None and sgot>40):
+    if (
+        values.get("SGPT") is not None and values["SGPT"] > 56
+    ) or (
+        values.get("SGOT") is not None and values["SGOT"] > 40
+    ):
         risks.append("Liver_Risk")
-    if len(risks)==0:
-        overall="Low"
-    elif len(risks)==1:
-        overall="Medium"
-    else:
-        overall="High"
-    return {"risks":risks,"overall_risk":overall}
+
+    overall = "Low" if not risks else "Review"
+    return {
+        "risks": risks,
+        "overall_risk": overall,
+        "disclaimer": "Simple thresholds only; not a diagnosis or a clinically validated risk estimate.",
+    }

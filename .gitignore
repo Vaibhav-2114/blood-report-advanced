@@ -1,2 +1,37 @@
-.vercel
-.env*.local
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+frontend/.streamlit/secrets.toml
+
+# Model/data artifacts generated locally
+*.pkl
+*.joblib
+ml_model/data/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Deployment tooling
+.vercel/

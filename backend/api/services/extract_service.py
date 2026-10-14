@@ -1,43 +1,58 @@
-import re, json
+import json
+import re
 from pathlib import Path
-HERE = Path(__file__).parent
-with open(HERE.parent / "utils" / "mapping.json") as f:
-    MAPPING = json.load(f)
 
-def normalize_key(k: str):
-    k = re.sub(r'[^a-z0-9 ]+','',k.lower())
-    for std, variants in MAPPING.items():
-        for v in variants:
-            if v in k:
-                # Map to proper key names that match normal_ranges.json
-                key_map = {
-                    'hemoglobin': 'Hemoglobin',
-                    'wbc': 'WBC',
-                    'platelets': 'Platelets',
-                    'creatinine': 'Creatinine',
-                    'sgpt': 'SGPT',
-                    'sgot': 'SGOT',
-                    'bilirubin': 'Bilirubin'
-                }
-                return key_map.get(std, std.capitalize())
+MAPPING_PATH = Path(__file__).parent.parent / "utils" / "mapping.json"
+with MAPPING_PATH.open(encoding="utf-8") as file:
+    MAPPING = json.load(file)
+
+KEY_MAP = {
+    "hemoglobin": "Hemoglobin",
+    "wbc": "WBC",
+    "platelets": "Platelets",
+    "creatinine": "Creatinine",
+    "sgpt": "SGPT",
+    "sgot": "SGOT",
+    "bilirubin": "Bilirubin",
+}
+
+
+def normalize_key(label: str):
+    """Map common report labels to the canonical parameter names."""
+    normalized = re.sub(r"[^a-z0-9 ]+", " ", label.lower())
+    normalized = " ".join(normalized.split())
+
+    for standard, aliases in MAPPING.items():
+        for alias in sorted(aliases, key=len, reverse=True):
+            alias = alias.lower().strip()
+            if re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", normalized):
+                return KEY_MAP.get(standard, standard.capitalize())
     return None
 
+
 def extract_key_values(text: str):
-    data = {}
-    lines = text.splitlines()
-    for line in lines:
+    """Extract likely label/value pairs; results should always be checked manually."""
+    values = {}
+    pattern = re.compile(
+        r"([A-Za-z][A-Za-z0-9 /()_-]{0,50}?)\s*(?::|\s{1,})\s*(-?\d+(?:\.\d+)?)"
+    )
+
+    for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
-        m = re.search(r'([A-Za-z \-\(\)/]+)[:\s]+([0-9]+(?:\.[0-9]+)?)', line)
-        if m:
-            raw_key = m.group(1).strip()
-            raw_val = m.group(2)
-            key = normalize_key(raw_key)
-            try:
-                val = float(raw_val)
-            except:
-                continue
-            if key:
-                data[key] = val
-    return data
+
+        match = pattern.search(line)
+        if not match:
+            continue
+
+        key = normalize_key(match.group(1).strip())
+        if not key:
+            continue
+
+        try:
+            values[key] = float(match.group(2))
+        except ValueError:
+            continue
+
+    return values

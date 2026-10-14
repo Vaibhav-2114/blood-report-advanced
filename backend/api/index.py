@@ -1,15 +1,13 @@
-"""
-Vercel entry point for FastAPI backend.
-This file is required for Vercel to properly route requests to the FastAPI app.
-"""
+"""Vercel entry point for the FastAPI application."""
+
 import sys
-import os
+from pathlib import Path
 
-# Add the backend directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
+# Ensure repository-root imports work when Vercel loads this file directly.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
-# Import and expose the FastAPI app
-from api.main import app
+from backend.api.main import app  # noqa: E402
 
-# Vercel expects a callable named 'app' or 'handler'
-__all__ = ['app']
+__all__ = ["app"]
