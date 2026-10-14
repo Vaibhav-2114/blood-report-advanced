@@ -9,7 +9,7 @@ FEATURES = ["Hemoglobin", "WBC", "Platelets", "Creatinine", "SGPT", "SGOT", "Bil
 
 
 def load_model():
-    """Load the optional local demo model. Missing or invalid files use rules instead."""
+    """Load the optional local demo model; use rules if it is absent or invalid."""
     if not MODEL_PATH.is_file():
         return None
     try:
@@ -31,7 +31,7 @@ def compare_with_ranges(values: dict):
 
         limits = reference.get("any")
         if limits is None:
-            # Hemoglobin ranges differ by sex; without that context, report both.
+            # Hemoglobin ranges differ by sex. Do not silently select one range.
             result[key] = {
                 "value": value,
                 "status": "Context needed",
@@ -56,22 +56,25 @@ def compare_with_ranges(values: dict):
 
 
 def predict_risk(values: dict):
-    """Use the optional synthetic demo model, or transparent rules as a fallback."""
+    """Return a demo label, not a medical prediction."""
     model = load_model()
     features = [values.get(name) for name in FEATURES]
     if model is None or any(value is None for value in features):
         return rule_based(values)
 
     try:
-        prediction = model.predict([features])[0]
+        label = str(model.predict([features])[0])
         probabilities = model.predict_proba([features])[0] if hasattr(model, "predict_proba") else None
-        confidence = float(max(probabilities)) if probabilities is not None else None
-        risk = "High" if confidence is not None and confidence >= 0.8 else (
-            "Medium" if confidence is not None and confidence >= 0.6 else "Low"
-        )
-        label = str(prediction)
-        risks = [] if label.lower() == "normal" else [label]
-        return {"risks": risks, "overall_risk": risk, "model_confidence": confidence}
+        model_confidence = float(max(probabilities)) if probabilities is not None else None
+
+        # Confidence is confidence in a synthetic demo label, not severity or clinical risk.
+        is_normal = label.strip().lower() in {"normal", "healthy", "none"}
+        return {
+            "risks": [] if is_normal else [label],
+            "overall_risk": "Low" if is_normal else "Review",
+            "model_confidence": model_confidence,
+            "disclaimer": "Experimental output from synthetic training data; not clinically validated.",
+        }
     except Exception:
         return rule_based(values)
 
@@ -89,5 +92,9 @@ def rule_based(values: dict):
     ):
         risks.append("Liver_Risk")
 
-    overall = "Low" if not risks else "Medium" if len(risks) == 1 else "High"
-    return {"risks": risks, "overall_risk": overall}
+    overall = "Low" if not risks else "Review"
+    return {
+        "risks": risks,
+        "overall_risk": overall,
+        "disclaimer": "Simple thresholds only; not a diagnosis or a clinically validated risk estimate.",
+    }
