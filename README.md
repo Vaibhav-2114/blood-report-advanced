@@ -118,7 +118,7 @@ python -m compileall -q backend frontend ml_model
 python -c "import json,pathlib; [json.loads(p.read_text()) for p in pathlib.Path('backend/api/utils').glob('*.json')]; print('JSON files OK')"
 ```
 
-## Limitations
+## Tests\n\nRun the service tests and syntax check with:\n\n\`\`\`bash\npython -m compileall -q backend frontend ml_model tests\npython -m unittest discover -s tests -v\n\`\`\`\n\nGitHub Actions runs these checks on pushes and pull requests.\n\n## Limitations
 
 - Parameter extraction is heuristic and may miss, misread, or mislabel values.
 - The currently configured ranges are simplified and may not account for age, sex, laboratory methods, or local reference intervals.
