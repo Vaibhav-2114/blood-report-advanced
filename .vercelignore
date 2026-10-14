@@ -1,4 +1,12 @@
-﻿# Exclude model artifacts and backups from Vercel
+# Keep deployment bundles small and exclude local-only artifacts.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env*
+.streamlit/secrets.toml
+frontend/.streamlit/secrets.toml
 tmp_model_backup/
+ml_model/data/
 *.pkl
-backend/api/services/predict_model.pkl
+*.joblib
