@@ -1,5 +1,5 @@
-import os
 import io
+import os
 
 import pandas as pd
 import requests
@@ -24,7 +24,7 @@ with st.sidebar:
         "Choose a blood report image or PDF",
         type=["png", "jpg", "jpeg", "tif", "tiff", "bmp", "pdf"],
     )
-    st.caption("Check all detected values against your original report.")
+    st.caption("Check every detected value against your original report.")
 
 if uploaded is not None:
     content = uploaded.getvalue()
@@ -37,7 +37,11 @@ if uploaded is not None:
 
     if uploaded.type and uploaded.type.startswith("image/"):
         try:
-            st.image(Image.open(io.BytesIO(content)), caption="Uploaded report", use_container_width=True)
+            st.image(
+                Image.open(io.BytesIO(content)),
+                caption="Uploaded report",
+                use_container_width=True,
+            )
         except Exception:
             st.warning("Image preview is unavailable for this file.")
 
@@ -58,21 +62,24 @@ if uploaded is not None:
                 st.stop()
 
     if "ocr_text" in st.session_state:
+        ocr_text = st.session_state["ocr_text"]
+        if ocr_text.startswith("Error:"):
+            st.error(ocr_text)
         with st.expander("Extracted text (review carefully)", expanded=False):
-            st.text_area("OCR text", st.session_state["ocr_text"], height=200)
+            st.text_area("OCR text", ocr_text, height=200)
 
         st.subheader("Detected parameters")
         values = st.session_state.get("extracted_values", {})
         if not values:
-            st.warning("No supported parameters were detected. Check the extracted text and enter values manually below.")
+            st.warning("No supported values were detected. Check the extracted text or enter values manually below.")
 
         editable = {}
         with st.form("analysis_form"):
-            for index, (key, value) in enumerate(values.items()):
+            for key, value in values.items():
                 editable[key] = st.number_input(key, value=float(value), key=f"value_{key}")
             manual = st.text_input(
                 "Additional or missing parameters (optional)",
-                help="Enter key=value pairs, e.g. Hemoglobin=13.5, WBC=7000. Canonical names are required.",
+                help="Enter key=value pairs, e.g. Hemoglobin=13.5, WBC=7000. Use canonical parameter names.",
             )
             submitted = st.form_submit_button("Analyze values", type="primary")
 
@@ -93,7 +100,11 @@ if uploaded is not None:
                 st.stop()
 
             try:
-                response = requests.post(f"{API_URL}/analyze", json=payload, timeout=(10, 45))
+                response = requests.post(
+                    f"{API_URL}/analyze",
+                    json=payload,
+                    timeout=(10, 45),
+                )
                 response.raise_for_status()
                 result = response.json()
             except requests.RequestException as exc:
@@ -120,46 +131,39 @@ if uploaded is not None:
             else:
                 st.info("No parameter comparisons were returned.")
 
-            st.subheader("Risk indicators")
+            st.subheader("Heuristic risk indicators")
             prediction = result.get("prediction", {})
-            risk = prediction.get("overall_risk", "Unknown")
-            st.metric("Rule/model risk indicator", risk)
-            risks = prediction.get("risks", [])
-            if risks:
-                for item in risks:
-                    st.write(f"- {item}")
-            else:
-                st.write("No configured risk rules were triggered.")
+            st.metric("Demo indicator", prediction.get("overall_risk", "Unknown"))
+            for risk in prediction.get("risks", []):
+                st.write(f"- {risk}")
+            st.caption(prediction.get("disclaimer", "Not a medical assessment."))
 
             st.subheader("Rule-based condition indicators")
             diseases = result.get("diseases", {})
             st.info(diseases.get("summary", "No summary was returned."))
-            possible = diseases.get("possible_diseases", {})
-            if possible:
-                for name, details in possible.items():
-                    with st.expander(f"{name} — {details.get('risk_level', 'Unknown')}"):
-                        st.write(details.get("description", ""))
-                        st.write(f"Rule score: {details.get('confidence', 0)}% (not a medical probability)")
-                        st.write(details.get("recommendation", ""))
-                        st.write("Matched indicators:")
-                        indicators = details.get("matched_indicators", [])
-                        if indicators:
-                            st.table([
-                                {
-                                    "Parameter": item.get("parameter"),
-                                    "Value": item.get("value"),
-                                    "Rule": item.get("condition"),
-                                }
-                                for item in indicators
-                            ])
-                        symptoms = details.get("symptoms", [])
-                        if symptoms:
-                            st.write("Associated symptoms listed by the rules: " + ", ".join(symptoms))
-            else:
-                st.write("No configured condition rules were triggered.")
+            st.caption(diseases.get("disclaimer", "Rule scores are not medical probabilities."))
+            for name, details in diseases.get("possible_diseases", {}).items():
+                with st.expander(f"{name} — {details.get('risk_level', 'Rule score')}"):
+                    st.write(details.get("description", ""))
+                    st.write(f"Rule score: {details.get('confidence', 0)}% (not a medical probability)")
+                    st.write(details.get("recommendation", ""))
+                    st.write("Matched indicators:")
+                    indicators = details.get("matched_indicators", [])
+                    if indicators:
+                        st.table([
+                            {
+                                "Parameter": item.get("parameter"),
+                                "Value": item.get("value"),
+                                "Rule": item.get("condition"),
+                            }
+                            for item in indicators
+                        ])
+                    symptoms = details.get("symptoms", [])
+                    if symptoms:
+                        st.write("Associated symptoms listed by the rules: " + ", ".join(symptoms))
 
 st.warning(
-    "This educational tool can misread reports and uses simplified, non-clinically-validated rules. "
-    "Verify every extracted value and consult a qualified healthcare professional. "
-    "A displayed score is not a diagnosis or a validated probability."
+    "OCR can misread values. This project uses simplified rules and synthetic demo data; "
+    "it is not clinically validated and cannot diagnose or exclude disease. Verify results "
+    "against the original report and consult a qualified healthcare professional."
 )
